@@ -19,6 +19,8 @@ function activateUser(key) {
     if (!users[key].life) {
         users[key].x = (Math.random() - 0.5) * width * 0.8;
         users[key].y = (Math.random() - 0.5) * height * 0.8;
+        users[key].vx = (Math.random() - 0.5) * 0.5;
+        users[key].vy = (Math.random() - 0.5) * 0.5;
     }
     users[key].life = 1;
     users[key].lifesp = 0.001;
@@ -29,11 +31,13 @@ function deactivateUser(key) {
     //
 }
 
-function updateUsers() {
+function updateUsers(t) {
     for (var i in users) {
         var u = users[i];
         if (u.life <= 0) { continue; }
         u.life -= u.lifesp;
+        u.x += u.vx * t;
+        u.y += u.vy * t;
         for (var s in u.sites) {
             var lnk = u.sites[s];
             if (lnk.life < 0) { continue; }
@@ -54,6 +58,8 @@ function activateSite(key) {
     if (!sites[key].life) {
         sites[key].x = (Math.random() - 0.5) * width * 0.8;
         sites[key].y = (Math.random() - 0.5) * height * 0.8;
+        sites[key].vx = (Math.random() - 0.5) * 3;
+        sites[key].vy = (Math.random() - 0.5) * 3;
     }
     sites[key].life = 1;
     sites[key].lifesp = 0.004;
@@ -63,10 +69,12 @@ function deactivateSites(key) {
     if (!sites[key]) return;
 }
 
-function updateSites() {
+function updateSites(t) {
     for (var i in sites) {
         var site = sites[i];
         if (site.life > 0) {
+            sites.x += sites.vx * t;
+            sites.y += sites.vy * t;
             attractors[site.attractor].x = site.x;
             attractors[site.attractor].y = site.y;
             site.life -= site.lifesp;
@@ -138,6 +146,11 @@ var GPU_Particles = 50000;
 var particles = [];
 var attractors = [];
 var empty = [];
+
+var gridStep = 10;
+var gridParams = [];
+var gridW = Math.floor(width / gridStep);
+var gridH = Math.floor(height / gridStep);
 
 for (var i = 0; i < GPU_Particles; i++) {
     particles.push({
@@ -253,6 +266,22 @@ renderer.setSize(width, height);
 container.appendChild(renderer.domElement);
 renderer.domElement.style.display = 'none';
 
+var gridgeometry = new THREE.Geometry();
+gridgeometry.colors = [];
+for (var i = 0; i < gridW * gridH; i++) {
+    gridgeometry.vertices.push(new THREE.Vector3((i % gridW) * gridStep - width / 2, Math.ceil(i / gridW) * gridStep - height / 2));
+    gridgeometry.colors.push(new THREE.Color(0xffffff));
+}
+var gridmaterial = new THREE.PointCloudMaterial({
+    size: 5,
+    transparent: true,
+    opacity: 0.3,
+    vertexColors: true,
+    // blending: THREE.AdditiveBlending
+});
+pcgrid = new THREE.PointCloud(gridgeometry, gridmaterial);
+scene.add(pcgrid);
+
 
 var geometry = new THREE.Geometry();
 geometry.colors = [];
@@ -303,8 +332,23 @@ container.appendChild(renderer3.domElement);
 canvas = renderer3.domElement;
 
 
+function lightUp(x, y, strength) {
+    strength = strength || 0.01;
+    var realX = Math.floor(x / gridStep);
+    var realY = Math.floor(y / gridStep);
+    var range = 5;
+    var rangesq = range * range;
+    for (var rx = realX - range; rx >= 0 && rx < gridW && rx <= realX + range; rx++) {
+        for (var ry = realY - range; ry >= 0 && ry < gridH && ry <= realY + range; ry++) {
+            var dist = ((ry - realY) * (ry - realY) + (rx - realX) * (rx - realX)) / rangesq;
+            gridgeometry.colors[ry * gridW + rx].r += strength * dist;
+            gridgeometry.colors[ry * gridW + rx].g += strength * dist;
+            gridgeometry.colors[ry * gridW + rx].b += strength * dist;
+        }
+    }
+}
 
-
+var textCovers = ["[]","<>","**","~~","++","{}","::","%%","##"]
 var prevTime = Date.now();
 
 function render() {
@@ -318,12 +362,14 @@ function render() {
     var curTime = Date.now();
     var t = (curTime - prevTime) / 100;
 
-    updateSites();
-    updateUsers();
+    updateSites(t);
+    updateUsers(t);
 
+    for (var i = 0; i < gridgeometry.colors.length; i++) {
+        gridgeometry.colors[i].r = gridgeometry.colors[i].g = gridgeometry.colors[i].b = 0.00;
+    }
 
     for (var i = 0; i < GPU_Particles; i++) {
-
 
         if (particles[i].life == -1) continue;
 
@@ -362,6 +408,9 @@ function render() {
         particles[i].x += particles[i].vx * (t + particles[i].glitch);
         particles[i].y += particles[i].vy * (t + particles[i].glitch);
         particles[i].glitch = 0;
+
+        lightUp(particles[i].x + width / 2, particles[i].y + height / 2);
+
         geometry.vertices[i].x = particles[i].x;
         geometry.vertices[i].y = particles[i].y;
 
@@ -390,6 +439,7 @@ function render() {
         }
     }
 
+    gridgeometry.colorsNeedUpdate = true;
     geometry.verticesNeedUpdate = true;
     geometry.colorsNeedUpdate = true;
     lineGeometry.verticesNeedUpdate = true;
@@ -428,12 +478,12 @@ function render() {
                     ctx.lineTo(upos.x, upos.y);
                     ctx.closePath();
                     ctx.stroke();
-                    
+
                     ctx.strokeStyle = "rgba(255,255,255,0.7)";
                     //ctx.fillStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
                     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
                     ctx.beginPath();
-                    ctx.arc(pos.x, pos.y,  lnk.life * 5, 0, 2 * Math.PI, false);
+                    ctx.arc(pos.x, pos.y, lnk.life * 5, 0, 2 * Math.PI, false);
                     ctx.closePath();
                     ctx.stroke();
                     ctx.globalCompositeOperation = "source-over";
@@ -441,6 +491,35 @@ function render() {
                 }
             }
         }
+    }
+
+
+    ctx.font = "18px ft";
+    ctx.textAlign = "center";
+    for (var u in users) {
+        ctx.fillStyle = "#fff";
+        var user = users[u];
+        if (user.life <= 0) continue;
+        var upos = worldTo2d(users[u].x, users[u].y);
+
+        if (Math.random() < user.life * 1.5) {
+            if (user.life > 0.5 && Math.random() > 0.5) {
+                if(Math.random() > 0.9 || !user.decor) {
+                    user.decor = textCovers[Math.floor(Math.random() * textCovers.length)];
+                }
+                ctx.fillText(user.decor[0] + " " + u + " " + user.decor[1], upos.x, upos.y + 50);
+            } else {
+                ctx.fillText(u, upos.x, upos.y + 50);
+            }
+            ctx.strokeStyle = "rgba(255,255,255,1)";
+            //ctx.fillStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(255,255,255," + ((1 - user.life) / 1.5 + 0.8) + ")";
+            ctx.arc(upos.x, upos.y, user.life * user.life * 20, 0, 2 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+        }
+
     }
 
 }
