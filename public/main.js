@@ -58,8 +58,8 @@ function activateSite(key) {
     if (!sites[key].life) {
         sites[key].x = (Math.random() - 0.5) * width * 0.8;
         sites[key].y = (Math.random() - 0.5) * height * 0.8;
-        sites[key].vx = (Math.random() - 0.5) * 3;
-        sites[key].vy = (Math.random() - 0.5) * 3;
+        sites[key].vx = (Math.random() - 0.5) * 0.2;
+        sites[key].vy = (Math.random() - 0.5) * 0.2;
     }
     sites[key].life = 1;
     sites[key].lifesp = 0.004;
@@ -147,7 +147,7 @@ var particles = [];
 var attractors = [];
 var empty = [];
 
-var gridStep = 10;
+var gridStep = 22;
 var gridParams = [];
 var gridW = Math.floor(width / gridStep);
 var gridH = Math.floor(height / gridStep);
@@ -333,7 +333,7 @@ canvas = renderer3.domElement;
 
 
 function lightUp(x, y, strength) {
-    strength = strength || 0.01;
+    strength = strength || 0.001;
     var realX = Math.floor(x / gridStep);
     var realY = Math.floor(y / gridStep);
     var range = 5;
@@ -348,7 +348,7 @@ function lightUp(x, y, strength) {
     }
 }
 
-var textCovers = ["[]","<>","**","~~","++","{}","::","%%","##"]
+var textCovers = ["[]", "<>", "**", "~~", "++", "{}", "::", "%%", "##"]
 var prevTime = Date.now();
 
 function render() {
@@ -501,10 +501,9 @@ function render() {
         var user = users[u];
         if (user.life <= 0) continue;
         var upos = worldTo2d(users[u].x, users[u].y);
-
         if (Math.random() < user.life * 1.5) {
             if (user.life > 0.5 && Math.random() > 0.5) {
-                if(Math.random() > 0.9 || !user.decor) {
+                if (Math.random() > 0.9 || !user.decor) {
                     user.decor = textCovers[Math.floor(Math.random() * textCovers.length)];
                 }
                 ctx.fillText(user.decor[0] + " " + u + " " + user.decor[1], upos.x, upos.y + 50);
@@ -519,7 +518,32 @@ function render() {
             ctx.closePath();
             ctx.fill();
         }
+    }
 
+
+    ctx.font = "13px ft";
+    for (var u in sites) {
+        ctx.fillStyle = "rgba(255,255,255,1)";
+        var site = sites[u];
+        if (site.life <= 0) continue;
+        var upos = worldTo2d(site.x, site.y);
+        if (Math.random() < site.life * 1.5) {
+            if (site.life > 0.5 && Math.random() > 0.5) {
+                if (Math.random() > 0.9 || !site.decor) {
+                    site.decor = textCovers[Math.floor(Math.random() * textCovers.length)];
+                }
+                ctx.fillText(site.decor[0] + " " + u + " " + site.decor[1], upos.x, upos.y + 40);
+            } else {
+                ctx.fillText(u, upos.x, upos.y + 40);
+            }
+            ctx.strokeStyle = "rgba(255,255,255,1)";
+            //ctx.fillStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(255,255,255," + ((1 - site.life) / 1.5 + 0.8) + ")";
+            ctx.arc(upos.x, upos.y, site.life * site.life * 20, 0, 2 * Math.PI, false);
+            ctx.closePath();
+            ctx.stroke();
+        }
     }
 
 }
