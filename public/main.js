@@ -1,11 +1,132 @@
+function randomColor() {
+    return {
+        r: Math.random(),
+        g: Math.random(),
+        b: Math.random()
+    };
+}
+
 var users = {};
 var sites = {};
+
+function activateUser(key) {
+    if (!users[key]) {
+        users[key] = {
+            color: randomColor(),
+            sites: {}
+        };
+    }
+    if (!users[key].life) {
+        users[key].x = (Math.random() - 0.5) * width * 0.8;
+        users[key].y = (Math.random() - 0.5) * height * 0.8;
+    }
+    users[key].life = 1;
+    users[key].lifesp = 0.001;
+}
+
+function deactivateUser(key) {
+    if (!users[key]) return;
+    //
+}
+
+function updateUsers() {
+    for (var i in users) {
+        var u = users[i];
+        if (u.life <= 0) { continue; }
+        u.life -= u.lifesp;
+        for (var s in u.sites) {
+            var lnk = u.sites[s];
+            if (lnk.life < 0) { continue; }
+            triggerLink(i, s);
+            lnk.life -= lnk.lifesp;
+            lnk.spike -= lnk.spikesp;
+        }
+    }
+}
+
+function activateSite(key) {
+    if (!sites[key]) {
+        sites[key] = {
+            color: randomColor(),
+            attractor: addAttractor(0, 0, 600, true)
+        };
+    }
+    if (!sites[key].life) {
+        sites[key].x = (Math.random() - 0.5) * width * 0.8;
+        sites[key].y = (Math.random() - 0.5) * height * 0.8;
+    }
+    sites[key].life = 1;
+    sites[key].lifesp = 0.004;
+}
+
+function deactivateSites(key) {
+    if (!sites[key]) return;
+}
+
+function updateSites() {
+    for (var i in sites) {
+        var site = sites[i];
+        if (site.life > 0) {
+            attractors[site.attractor].x = site.x;
+            attractors[site.attractor].y = site.y;
+            site.life -= site.lifesp;
+            if(site.life < 0) {
+                attractors[site.attractor].disabled = true;
+            } else {
+                attractors[site.attractor].disabled = false;
+            }
+        }
+
+        //attractors[site.attractor].s = site.y;
+    }
+}
+
+function packetIn(u, s) {
+    activateUser(u);
+    activateSite(s);
+    var user = users[u];
+    var site = sites[s];
+    if (!user.sites[s]) {
+        user.sites[s] = {};
+    }
+    user.sites[s].life = 1;
+    user.sites[s].lifesp = 0.01;
+    user.sites[s].spike = 1;
+    user.sites[s].spikesp = 0.1;
+}
+
+
+function triggerLink(u, s) {
+    var user = users[u];
+    var site = sites[s];
+    var dx = site.x - user.x;
+    var dy = site.y - user.y;
+    var dsq = dx * dx + dy * dy;
+    var d = Math.sqrt(dsq);
+    var nx = dx / d * 3;
+    var ny = dy / d * 3;
+    for (var i = 0; i < 100; i++) {
+        if (i % 4 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life) {
+            var p = emit(user.x, user.y, nx + 30 * (Math.random() - 0.5), ny + 30 * (Math.random() - 0.5), 1, 0.001, site.color);
+            p.attracted = [site.attractor];
+            p.nrepelled = p.attracted;
+        }
+        
+        if (i % 6 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].spike) {
+            var p = emit(user.x, user.y, nx * 15 + 3 * (Math.random() - 0.5), ny * 15 + 3 * (Math.random() - 0.5), 1, 0.003, site.color);
+            p.attracted = [site.attractor];
+            p.nrepelled = p.attracted;
+        }
+    }
+}
+
+
 var width = window.innerWidth;
 var height = window.innerHeight;
 var wd2 = width / 2;
 var hd2 = height / 2;
 
-var GPU_Particles = 100000;
+var GPU_Particles = 50000;
 
 
 //particles
@@ -25,23 +146,22 @@ for (var i = 0; i < GPU_Particles; i++) {
         mode: 0,
         vx: 0,
         vy: 0,
-        life: -1,
+        life: 0,
         lifesp: 0,
         glitch: 0,
         atttracted: [],
         nrepelled: []
     });
-    empty.push(i);
 }
+
+
 
 
 function toggle() {
-    for(var i = 0; i < particles.length; i++) {
-        particles[i].glitch = 5;
-    }
+    packetIn("doge", "ball");
 }
 
-var MIN = 50;
+var MIN = 20;
 var MINSQ = MIN * MIN;
 
 //j = index of particles
@@ -59,7 +179,7 @@ function attract(j, k, t, m) {
     dsq = dsq < MINSQ ? MINSQ : dsq;
     var d = Math.sqrt(dsq);
 
-    var forceT = t * 600 * a.s / dsq;
+    var forceT = t * 600 * a.s / dsq * m;
     //fx / force = dx / dsq;
     //
     var vvx = forceT * dx / d;
@@ -75,7 +195,7 @@ function addAttractor(x, y, s, disabled) {
         y: y,
         s: s,
         disabled: disabled
-    }) -1;
+    }) - 1;
 }
 
 function emit(x, y, vx, vy, life, lifesp, color) {
@@ -88,14 +208,15 @@ function emit(x, y, vx, vy, life, lifesp, color) {
     p.y = y;
     p.vx = vx;
     p.vy = vy;
+    p.color = color;
     return p;
 }
 
-addAttractor(100, 100, 222, false);
+// addAttractor(100, 100, 222, false);
 
-addAttractor(-100, 100, 222, false);
-addAttractor(-100, -100, 222, false);
-addAttractor(100, -100, 222, false);
+// addAttractor(-100, 100, 222, false);
+// addAttractor(-100, -100, 222, false);
+// addAttractor(100, -100, 222, false);
 
 
 container = document.createElement('div');
@@ -112,7 +233,7 @@ camera = new THREE.OrthographicCamera(
 );
 //  camer?a = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 camera.position.z = Math.sqrt(width * width + height * height);
-    
+
 scene = new THREE.Scene();
 
 //#1st pass
@@ -129,7 +250,7 @@ for (var i = 0; i < GPU_Particles; i++) {
     geometry.colors.push(new THREE.Color(0xffffff));
 }
 var material = new THREE.PointCloudMaterial({
-    size: 35,
+    size: 25,
     transparent: true,
     opacity: 0.3,
     vertexColors: true,
@@ -154,7 +275,7 @@ var lineMaterial = new THREE.LineBasicMaterial({
     vertexColors: true,
     blending: THREE.AdditiveBlending
 });
-ln = new THREE.Line(lineGeometry, lineMaterial, THREE.LinePieces );
+ln = new THREE.Line(lineGeometry, lineMaterial, THREE.LinePieces);
 scene.add(ln);
 
 
@@ -179,13 +300,18 @@ var prevTime = Date.now();
 
 function render() {
 
-    for (var i = 0; i < 45; i++) {
-        var t = emit(0, 0, (0.5 - Math.random()) * 14, (0.5 - Math.random()) * 14, 1, 0.005);
-    }
+    // for (var i = 0; i < 45; i++) {
+    //     var t = emit(0, 0, (0.5 - Math.random()) * 14, (0.5 - Math.random()) * 14, 1, 0.01);
+    // }
+
 
 
     var curTime = Date.now();
     var t = (curTime - prevTime) / 100;
+
+    updateSites();
+    updateUsers();
+
 
     for (var i = 0; i < GPU_Particles; i++) {
 
@@ -222,7 +348,7 @@ function render() {
 
         if (particles[i].nrepelled) {
             for (var j = 0; j < attractors.length; j++) {
-                if (particles[i].nrepelled.indexOf(j)) continue;
+                if (particles[i].nrepelled.indexOf(j) >= 0) continue;
                 attract(i, j, t, -1);
             }
         }
@@ -238,9 +364,9 @@ function render() {
         lineGeometry.vertices[i2].x = geometry.vertices[i].x;
         lineGeometry.vertices[i2].y = geometry.vertices[i].y;
 
-        geometry.colors[i].r = Math.pow(particles[i].color.r * particles[i].life, 3) * 0.8;
-        geometry.colors[i].g = Math.pow(particles[i].color.g * particles[i].life, 4) * 0.8;
-        geometry.colors[i].b = Math.pow(particles[i].color.b * particles[i].life, 1) * 0.8;
+        geometry.colors[i].r = particles[i].color.r * Math.pow(particles[i].life, 3) * 0.8;
+        geometry.colors[i].g = particles[i].color.g * Math.pow(particles[i].life, 4) * 0.8;
+        geometry.colors[i].b = particles[i].color.b * Math.pow(particles[i].life, 1) * 0.8;
 
         if (particles[i].life < 1) {
             lineGeometry.colors[i2 + 1].r = lineGeometry.colors[i2].r;
@@ -252,8 +378,8 @@ function render() {
         }
 
         particles[i].life -= particles[i].lifesp;
-        
-        if(particles[i].x < -wd2 || particles[i].x > wd2 || particles[i].y < -hd2 || particles[i].y > hd2) {
+
+        if (particles[i].x < -wd2 || particles[i].x > wd2 || particles[i].y < -hd2 || particles[i].y > hd2) {
             particles[i].life = 0;
         }
     }
@@ -265,17 +391,17 @@ function render() {
     renderer.render(scene, camera);
 
     prevTime = curTime;
-    
-    
+
+
     var bufferctx = doublebuffer.getContext("2d");
-    bufferctx.fillStyle = "rgba(0,0,0,0.1)";
+    bufferctx.fillStyle = "rgba(0,0,0,0.3)";
     bufferctx.globalCompositeOperation = "source-over";
     bufferctx.fillRect(0, 0, width * 2, height * 2);
     bufferctx.globalCompositeOperation = "lighter";
     bufferctx.drawImage(renderer.domElement, 0, 0);
-    
-    
-    
+
+
+
     var ctx = canvas.getContext("2d");
     ctx.drawImage(doublebuffer, 0, 0);
 }
