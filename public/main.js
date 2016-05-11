@@ -70,7 +70,7 @@ function updateSites() {
             attractors[site.attractor].x = site.x;
             attractors[site.attractor].y = site.y;
             site.life -= site.lifesp;
-            if(site.life < 0) {
+            if (site.life < 0) {
                 attractors[site.attractor].disabled = true;
             } else {
                 attractors[site.attractor].s = 500 * site.life * site.life;
@@ -108,7 +108,7 @@ function triggerLink(u, s) {
     var ny = dy / d * 3;
     for (var i = 0; i < 100; i++) {
         if (i % 15 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life) {
-            var p = emit(user.x, user.y, nx * 0.5 + 30 * (Math.random() - 0.5), ny* 0.5 + 30 * (Math.random() - 0.5), 1, 0.007, site.color);
+            var p = emit(user.x, user.y, nx * 0.5 + 30 * (Math.random() - 0.5), ny * 0.5 + 30 * (Math.random() - 0.5), 1, 0.007, site.color);
             p.attracted = [site.attractor];
             p.nrepelled = p.attracted;
         }
@@ -118,7 +118,7 @@ function triggerLink(u, s) {
             p.nrepelled = p.attracted;
         }
         if (i % 30 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life * 2) {
-            var p = emit(user.x, user.y, nx * 0.5 + 3 * (Math.random() - 0.5), ny* 0.5 + 3 * (Math.random() - 0.5), 1, 0.0005, site.color, 5);
+            var p = emit(user.x, user.y, nx * 0.5 + 3 * (Math.random() - 0.5), ny * 0.5 + 3 * (Math.random() - 0.5), 1, 0.0005, site.color, 4);
             p.attracted = [site.attractor];
             p.nrepelled = p.attracted;
         }
@@ -355,7 +355,7 @@ function render() {
         if (particles[i].nrepelled) {
             for (var j = 0; j < attractors.length; j++) {
                 if (particles[i].nrepelled.indexOf(j) >= 0) continue;
-                attract(i, j, t, -0.05);
+                attract(i, j, t, -0.02);
             }
         }
 
@@ -408,11 +408,51 @@ function render() {
 
 
     var ctx = canvas.getContext("2d");
+    ctx.globalCompositeOperation = "source-over";
     ctx.drawImage(doublebuffer, 0, 0);
-    
-    
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineWidth = 3;
+    for (var u in users) {
+        var upos = worldTo2d(users[u].x, users[u].y);
+        for (var s in users[u].sites) {
+            var lnk = users[u].sites[s];
+            if (lnk.life > 0) {
+                if (Math.random() < lnk.life) {
+                    var st = sites[s];
+                    ctx.globalCompositeOperation = "lighter";
+                    var pos = worldTo2d(st.x, st.y);
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+                    //ctx.strokeStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(upos.x, upos.y);
+                    ctx.closePath();
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+                    //ctx.fillStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y,  lnk.life * 5, 0, 2 * Math.PI, false);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
 }
 
-
+var projector = new THREE.Projector();
+function worldTo2d(x, y) {
+    var p3D = new THREE.Vector3(x, y, 0),
+        p3D = projector.projectVector(p3D, camera);
+    //need extra steps to convert p2D to window's coordinates
+    p3D.x = (p3D.x + 1) / 2 * width * 1.5;
+    p3D.y = - (p3D.y - 1) / 2 * height * 1.5;
+    return p3D;
+}
 
 (function animate() { render(); requestAnimationFrame(animate); })();
