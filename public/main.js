@@ -27,12 +27,19 @@ for (var i = 0; i < GPU_Particles; i++) {
         vy: 0,
         life: -1,
         lifesp: 0,
+        glitch: 0,
         atttracted: [],
         nrepelled: []
     });
     empty.push(i);
 }
 
+
+function toggle() {
+    for(var i = 0; i < particles.length; i++) {
+        particles[i].glitch = 5;
+    }
+}
 
 var MIN = 50;
 var MINSQ = MIN * MIN;
@@ -84,7 +91,11 @@ function emit(x, y, vx, vy, life, lifesp, color) {
     return p;
 }
 
-addAttractor(500, 100, 600, false);
+addAttractor(100, 100, 222, false);
+
+addAttractor(-100, 100, 222, false);
+addAttractor(-100, -100, 222, false);
+addAttractor(100, -100, 222, false);
 
 
 container = document.createElement('div');
@@ -108,7 +119,7 @@ scene = new THREE.Scene();
 renderer = new THREE.WebGLRenderer();
 renderer.setSize(width, height);
 container.appendChild(renderer.domElement);
-// renderer.domElement.style.display = 'none';
+renderer.domElement.style.display = 'none';
 
 
 var geometry = new THREE.Geometry();
@@ -148,16 +159,12 @@ scene.add(ln);
 
 
 
-
-
-
-
 //#2nd pass
 renderer2 = new THREE.CanvasRenderer();
 renderer2.setSize(width, height);
 container.appendChild(renderer2.domElement);
 doublebuffer = renderer2.domElement;
-// doublebuffer.style.display = 'none';
+doublebuffer.style.display = 'none';
 
 //#3rd pass
 renderer3 = new THREE.CanvasRenderer();
@@ -220,10 +227,9 @@ function render() {
             }
         }
 
-
-        particles[i].x += particles[i].vx * t;
-        particles[i].y += particles[i].vy * t;
-
+        particles[i].x += particles[i].vx * (t + particles[i].glitch);
+        particles[i].y += particles[i].vy * (t + particles[i].glitch);
+        particles[i].glitch = 0;
         geometry.vertices[i].x = particles[i].x;
         geometry.vertices[i].y = particles[i].y;
 
@@ -259,6 +265,19 @@ function render() {
     renderer.render(scene, camera);
 
     prevTime = curTime;
+    
+    
+    var bufferctx = doublebuffer.getContext("2d");
+    bufferctx.fillStyle = "rgba(0,0,0,0.1)";
+    bufferctx.globalCompositeOperation = "source-over";
+    bufferctx.fillRect(0, 0, width * 2, height * 2);
+    bufferctx.globalCompositeOperation = "lighter";
+    bufferctx.drawImage(renderer.domElement, 0, 0);
+    
+    
+    
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(doublebuffer, 0, 0);
 }
 
 
