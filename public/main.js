@@ -73,6 +73,7 @@ function updateSites() {
             if(site.life < 0) {
                 attractors[site.attractor].disabled = true;
             } else {
+                attractors[site.attractor].s = 500 * site.life * site.life;
                 attractors[site.attractor].disabled = false;
             }
         }
@@ -106,14 +107,18 @@ function triggerLink(u, s) {
     var nx = dx / d * 3;
     var ny = dy / d * 3;
     for (var i = 0; i < 100; i++) {
-        if (i % 4 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life) {
-            var p = emit(user.x, user.y, nx + 30 * (Math.random() - 0.5), ny + 30 * (Math.random() - 0.5), 1, 0.001, site.color);
+        if (i % 15 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life) {
+            var p = emit(user.x, user.y, nx * 0.5 + 30 * (Math.random() - 0.5), ny* 0.5 + 30 * (Math.random() - 0.5), 1, 0.007, site.color);
             p.attracted = [site.attractor];
             p.nrepelled = p.attracted;
         }
-        
         if (i % 6 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].spike) {
-            var p = emit(user.x, user.y, nx * 15 + 3 * (Math.random() - 0.5), ny * 15 + 3 * (Math.random() - 0.5), 1, 0.003, site.color);
+            var p = emit(user.x, user.y, nx * 15 + 11 * (Math.random() - 0.5), ny * 15 + 11 * (Math.random() - 0.5), 1, 0.001, site.color, 3);
+            p.attracted = [site.attractor];
+            p.nrepelled = p.attracted;
+        }
+        if (i % 30 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life * 2) {
+            var p = emit(user.x, user.y, nx * 0.5 + 3 * (Math.random() - 0.5), ny* 0.5 + 3 * (Math.random() - 0.5), 1, 0.0005, site.color, 5);
             p.attracted = [site.attractor];
             p.nrepelled = p.attracted;
         }
@@ -159,9 +164,14 @@ for (var i = 0; i < GPU_Particles; i++) {
 
 function toggle() {
     packetIn("doge", "ball");
+    packetIn("doge", "ball2");
+    packetIn("laji", "ball2");
+    packetIn("laji", "c");
+    packetIn("rbb", "c");
+    packetIn("rbb2", "c2");
 }
 
-var MIN = 20;
+var MIN = 50;
 var MINSQ = MIN * MIN;
 
 //j = index of particles
@@ -179,7 +189,7 @@ function attract(j, k, t, m) {
     dsq = dsq < MINSQ ? MINSQ : dsq;
     var d = Math.sqrt(dsq);
 
-    var forceT = t * 600 * a.s / dsq * m;
+    var forceT = t * 600 * a.s / dsq * m * (p.mult ? p.mult : 1);
     //fx / force = dx / dsq;
     //
     var vvx = forceT * dx / d;
@@ -198,7 +208,7 @@ function addAttractor(x, y, s, disabled) {
     }) - 1;
 }
 
-function emit(x, y, vx, vy, life, lifesp, color) {
+function emit(x, y, vx, vy, life, lifesp, color, multiplier) {
     if (empty.length == 0) return;
     color = color || { r: 1, g: 1, b: 1 };
     var p = particles[empty.pop()];
@@ -208,6 +218,7 @@ function emit(x, y, vx, vy, life, lifesp, color) {
     p.y = y;
     p.vx = vx;
     p.vy = vy;
+    p.mult = multiplier;
     p.color = color;
     return p;
 }
@@ -250,9 +261,9 @@ for (var i = 0; i < GPU_Particles; i++) {
     geometry.colors.push(new THREE.Color(0xffffff));
 }
 var material = new THREE.PointCloudMaterial({
-    size: 25,
+    size: 33,
     transparent: true,
-    opacity: 0.3,
+    opacity: 0.1,
     vertexColors: true,
     blending: THREE.AdditiveBlending
 });
@@ -277,8 +288,6 @@ var lineMaterial = new THREE.LineBasicMaterial({
 });
 ln = new THREE.Line(lineGeometry, lineMaterial, THREE.LinePieces);
 scene.add(ln);
-
-
 
 //#2nd pass
 renderer2 = new THREE.CanvasRenderer();
@@ -326,14 +335,12 @@ function render() {
             geometry.vertices[i].x = geometry.vertices[i].y = 0;
             lineGeometry.vertices[i2].x = lineGeometry.vertices[i2].y = 0;
             lineGeometry.vertices[i2 + 1].x = lineGeometry.vertices[i2 + 1].y = 0;
-
             geometry.colors[i].r = geometry.colors[i].g = geometry.colors[i].b = 0;
             lineGeometry.colors[i2].r = lineGeometry.colors[i2].g = lineGeometry.colors[i2].b = 0;
             lineGeometry.colors[i2 + 1].r = lineGeometry.colors[i2 + 1].g = lineGeometry.colors[i2 + 1].b = 0;
             particles[i].life = -1;
             continue;
         }
-
 
         if (particles[i].attracted) {
             for (var j = 0; j < particles[i].attracted.length; j++) {
@@ -345,11 +352,10 @@ function render() {
             }
         }
 
-
         if (particles[i].nrepelled) {
             for (var j = 0; j < attractors.length; j++) {
                 if (particles[i].nrepelled.indexOf(j) >= 0) continue;
-                attract(i, j, t, -1);
+                attract(i, j, t, -0.05);
             }
         }
 
@@ -394,16 +400,17 @@ function render() {
 
 
     var bufferctx = doublebuffer.getContext("2d");
-    bufferctx.fillStyle = "rgba(0,0,0,0.3)";
+    bufferctx.fillStyle = "rgba(0,0,0,0.35)";
     bufferctx.globalCompositeOperation = "source-over";
     bufferctx.fillRect(0, 0, width * 2, height * 2);
     bufferctx.globalCompositeOperation = "lighter";
     bufferctx.drawImage(renderer.domElement, 0, 0);
 
 
-
     var ctx = canvas.getContext("2d");
     ctx.drawImage(doublebuffer, 0, 0);
+    
+    
 }
 
 
