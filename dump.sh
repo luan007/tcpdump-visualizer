@@ -1,0 +1,1 @@
+stdbuf -i0 -o0 -e0 tcpdump -s 512 -l -i br-lan 'src net 192.168.1.0/24 and (port 443 or port 80)' -A -q -e | stdbuf -i0 -o0 -e0 grep -E -i "(Host\:|tcp )" | stdbuf -i0 -o0 -e0 socat TCP-LISTEN:8888,fork,reuseaddr -
