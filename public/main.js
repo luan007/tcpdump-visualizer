@@ -30,8 +30,8 @@ function activateUser(key) {
     if (users[key].life <= 0 || !users[key].life) {
         users[key].x = (Math.random() - 0.5) * width * 0.8;
         users[key].y = (Math.random() - 0.5) * height * 0.8;
-        users[key].vx = (Math.random() - 0.5) * 0.5;
-        users[key].vy = (Math.random() - 0.5) * 0.5;
+        users[key].vx = (Math.random() - 0.5) * 2.5;
+        users[key].vy = (Math.random() - 0.5) * 2.5;
     }
     users[key].life = 1;
     users[key].lifesp = 0.001;
@@ -47,8 +47,8 @@ function updateUsers(t) {
         var u = users[i];
         if (u.life <= 0) { continue; }
         u.life -= u.lifesp;
-        u.x += u.vx * t * 15;
-        u.y += u.vy * t * 15;
+        u.x += u.vx * t;
+        u.y += u.vy * t;
         if (u.x > wd2 || u.x < -wd2) u.x = -u.x;
         if (u.y > hd2 || u.y < -hd2) u.y = -u.y;
         for (var s in u.sites) {
@@ -76,8 +76,8 @@ function activateSite(key) {
     if (!sites[key].life) {
         sites[key].x = (Math.random() - 0.5) * width * 0.8;
         sites[key].y = (Math.random() - 0.5) * height * 0.8;
-        sites[key].vx = (Math.random() - 0.5) * 0.2;
-        sites[key].vy = (Math.random() - 0.5) * 0.2;
+        sites[key].vx = (Math.random() - 0.5) * 1.5;
+        sites[key].vy = (Math.random() - 0.5) * 1.5;
     }
     sites[key].life = 1;
     sites[key].lifesp = 0.004;
