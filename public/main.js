@@ -47,11 +47,10 @@ function updateUsers(t) {
         var u = users[i];
         if (u.life <= 0) { continue; }
         u.life -= u.lifesp;
-        u.x += u.vx * t;
-        u.y += u.vy * t;
-
-        if (u.x > rwd2 || u.x < -rwd2) u.x = -u.x;
-        if (u.y > rhd2 || u.y < -rhd2) u.y = -u.y;
+        u.x += u.vx * t * 15;
+        u.y += u.vy * t * 15;
+        if (u.x > wd2 || u.x < -wd2) u.x = -u.x;
+        if (u.y > hd2 || u.y < -hd2) u.y = -u.y;
         for (var s in u.sites) {
             var lnk = u.sites[s];
             if (lnk.life < 0) { continue; }
@@ -94,8 +93,8 @@ function updateSites(t) {
         if (site.life > 0) {
             site.x += site.vx * t;
             site.y += site.vy * t;
-            if (site.x > rwd2 || site.x < -rwd2) site.x = -site.x;
-            if (site.y > rhd2 || site.y < -rhd2) site.y = -site.y;
+            if (site.x > wd2 || site.x < -wd2) site.x = -site.x;
+            if (site.y > hd2 || site.y < -hd2) site.y = -site.y;
             attractors[site.attractor].x = site.x;
             attractors[site.attractor].y = site.y;
             site.life -= site.lifesp;
@@ -467,7 +466,7 @@ function render() {
 
         particles[i].life -= particles[i].lifesp;
 
-        if (particles[i].x < -rwd2 || particles[i].x > rwd2 || particles[i].y < -rhd2 || particles[i].y > rhd2) {
+        if (particles[i].x < -wd2 || particles[i].x > wd2 || particles[i].y < -hd2 || particles[i].y > hd2) {
             particles[i].life = 0;
         }
     }
