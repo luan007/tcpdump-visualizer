@@ -50,8 +50,8 @@ function updateUsers(t) {
         u.x += u.vx * t;
         u.y += u.vy * t;
 
-        if (u.x > width || u.x < -width) u.x = -u.x;
-        if (u.y > height || u.y < -height) u.y = -u.y;
+        if (u.x > rwd2 || u.x < -rwd2) u.x = -u.x;
+        if (u.y > rhd2 || u.y < -rhd2) u.y = -u.y;
         for (var s in u.sites) {
             var lnk = u.sites[s];
             if (lnk.life < 0) { continue; }
@@ -94,8 +94,8 @@ function updateSites(t) {
         if (site.life > 0) {
             site.x += site.vx * t;
             site.y += site.vy * t;
-            if (site.x > width || site.x < -width) site.x = -site.x;
-            if (site.y > height || site.y < -height) site.y = -site.y;
+            if (site.x > rwd2 || site.x < -rwd2) site.x = -site.x;
+            if (site.y > rhd2 || site.y < -rhd2) site.y = -site.y;
             attractors[site.attractor].x = site.x;
             attractors[site.attractor].y = site.y;
             site.life -= site.lifesp;
@@ -135,7 +135,7 @@ function triggerLink(u, s) {
     var d = Math.sqrt(dsq);
     var nx = dx / d * 3;
     var ny = dy / d * 3;
-    for (var i = 0; i < 100; i++) {
+    for (var i = 0; i < 50; i++) {
         if (i % 15 == 0 && empty.length > 0 && Math.random() < users[u].sites[s].life) {
             var p = emit(user.x, user.y, nx * 0.5 + 30 * (Math.random() - 0.5), ny * 0.5 + 30 * (Math.random() - 0.5), 1, 0.007, site.color);
             p.attracted = [site.attractor];
@@ -157,10 +157,14 @@ function triggerLink(u, s) {
 
 var width = window.innerWidth;
 var height = window.innerHeight;
+var realw = width * devicePixelRatio;
+var realh = height * devicePixelRatio;
 var wd2 = width / 2;
 var hd2 = height / 2;
+var rwd2 = realw / 2 + 55;
+var rhd2 = realh / 2 + 55;
 
-var GPU_Particles = 30000;
+var GPU_Particles = 50000;
 
 
 //particles
@@ -168,7 +172,7 @@ var particles = [];
 var attractors = [];
 var empty = [];
 
-var gridStep = 22;
+var gridStep = 24;
 var gridParams = [];
 var gridW = Math.floor(width / gridStep);
 var gridH = Math.floor(height / gridStep);
@@ -309,9 +313,9 @@ for (var i = 0; i < GPU_Particles; i++) {
     geometry.colors.push(new THREE.Color(0xffffff));
 }
 var material = new THREE.PointCloudMaterial({
-    size: 33,
+    size: 50,
     transparent: true,
-    opacity: 0.1,
+    opacity: 0.06,
     vertexColors: true,
     blending: THREE.AdditiveBlending
 });
@@ -352,7 +356,7 @@ canvas = renderer3.domElement;
 
 
 function lightUp(x, y, strength) {
-    strength = strength || 0.001;
+    strength = strength || 0.005;
     var realX = Math.floor(x / gridStep);
     var realY = Math.floor(y / gridStep);
     var range = 5;
@@ -456,7 +460,7 @@ function render() {
 
         particles[i].life -= particles[i].lifesp;
 
-        if (particles[i].x < -wd2 || particles[i].x > wd2 || particles[i].y < -hd2 || particles[i].y > hd2) {
+        if (particles[i].x < -rwd2 || particles[i].x > rwd2 || particles[i].y < -rhd2 || particles[i].y > rhd2) {
             particles[i].life = 0;
         }
     }
@@ -477,7 +481,7 @@ function render() {
 
 
     var bufferctx = doublebuffer.getContext("2d");
-    bufferctx.fillStyle = "rgba(0,0,0,0.35)";
+    bufferctx.fillStyle = "rgba(0,0,0,0.3)";
     bufferctx.globalCompositeOperation = "source-over";
     bufferctx.fillRect(0, 0, width * 2, height * 2);
     bufferctx.globalCompositeOperation = "lighter";
@@ -611,22 +615,20 @@ function render() {
         prevBlink = curTime;
     }
 
-
-
     if (activity / 10 <= 1) {
         if (blink <= 3) {
             ctx.font = "40px ft";
             ctx.globalCompositeOperation = "lighter";
             ctx.textAlign = "center";
             ctx.fillStyle = "rgba(255,255,255," + (blink % 2 + 0.3) + ")"
-            ctx.fillText("Join [ Edge ] Wi-Fi to Start", width * 1.5 / 2, height * 1.5 / 2);
+            ctx.fillText("Join [ Edge ] Wi-Fi to Start", realw / 2, realh / 2);
         }
         else if (blink <= 7) {
             ctx.font = "40px ft";
             ctx.globalCompositeOperation = "lighter";
             ctx.textAlign = "center";
             ctx.fillStyle = "rgba(255,255,255," + (blink % 2 + 0.3) + ")"
-            ctx.fillText("Go for anything Online", width * 1.5 / 2, height * 1.5 / 2);
+            ctx.fillText("Go for anything Online", realw / 2, realh / 2);
         }
     }
 }
@@ -636,8 +638,8 @@ function worldTo2d(x, y) {
     var p3D = new THREE.Vector3(x, y, 0),
         p3D = projector.projectVector(p3D, camera);
     //need extra steps to convert p2D to window's coordinates
-    p3D.x = (p3D.x + 1) / 2 * width * 1.5;
-    p3D.y = - (p3D.y - 1) / 2 * height * 1.5;
+    p3D.x = (p3D.x + 1) / 2 * realw;
+    p3D.y = - (p3D.y - 1) / 2 * realh;
     return p3D;
 }
 

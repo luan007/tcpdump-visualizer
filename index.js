@@ -44,6 +44,7 @@ function grabfavico(host) {
 function parse(line) {
     if(line.indexOf("Host:") == 0 && prevsrc) {
         //host
+        try{
         var host = line.split("Host: ")[1].trim();
         console.log(prevsrc.mac + " [" + prevsrc.src + "] -> " + prevsrc.protocol + "://" + host);
         // grabfavico(host);
@@ -51,6 +52,7 @@ function parse(line) {
             src: prevsrc,
             host: host    
         });
+        }catch(e){}
     }
     else {
         // console.log(line);
