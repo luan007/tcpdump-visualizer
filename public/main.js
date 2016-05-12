@@ -1,3 +1,14 @@
+var socket = io('http://localhost:3000');
+socket.on('access', function (data) {
+    // console.log(data);
+    packetIn(data.src, data.dst);
+});
+
+socket.on('host', function (data) {
+    // packetIn(data.src, data.dst);
+    tagSite(data.src.dst, data.host);
+});
+
 function randomColor() {
     return {
         r: Math.random(),
@@ -16,7 +27,7 @@ function activateUser(key) {
             sites: {}
         };
     }
-    if (!users[key].life) {
+    if (users[key].life <= 0 || !users[key].life) {
         users[key].x = (Math.random() - 0.5) * width * 0.8;
         users[key].y = (Math.random() - 0.5) * height * 0.8;
         users[key].vx = (Math.random() - 0.5) * 0.5;
@@ -38,6 +49,9 @@ function updateUsers(t) {
         u.life -= u.lifesp;
         u.x += u.vx * t;
         u.y += u.vy * t;
+
+        if (u.x > width || u.x < -width) u.x = -u.x;
+        if (u.y > height || u.y < -height) u.y = -u.y;
         for (var s in u.sites) {
             var lnk = u.sites[s];
             if (lnk.life < 0) { continue; }
@@ -46,6 +60,11 @@ function updateUsers(t) {
             lnk.spike -= lnk.spikesp;
         }
     }
+}
+
+function tagSite(key, v) {
+    activateSite(key);
+    sites[key].host = v;
 }
 
 function activateSite(key) {
@@ -73,8 +92,10 @@ function updateSites(t) {
     for (var i in sites) {
         var site = sites[i];
         if (site.life > 0) {
-            sites.x += sites.vx * t;
-            sites.y += sites.vy * t;
+            site.x += site.vx * t;
+            site.y += site.vy * t;
+            if (site.x > width || site.x < -width) site.x = -site.x;
+            if (site.y > height || site.y < -height) site.y = -site.y;
             attractors[site.attractor].x = site.x;
             attractors[site.attractor].y = site.y;
             site.life -= site.lifesp;
@@ -139,7 +160,7 @@ var height = window.innerHeight;
 var wd2 = width / 2;
 var hd2 = height / 2;
 
-var GPU_Particles = 50000;
+var GPU_Particles = 30000;
 
 
 //particles
@@ -171,8 +192,6 @@ for (var i = 0; i < GPU_Particles; i++) {
         nrepelled: []
     });
 }
-
-
 
 
 function toggle() {
@@ -351,6 +370,9 @@ function lightUp(x, y, strength) {
 var textCovers = ["[]", "<>", "**", "~~", "++", "{}", "::", "%%", "##"]
 var prevTime = Date.now();
 
+var prevBlink = prevTime;
+var blink = 0;
+
 function render() {
 
     // for (var i = 0; i < 45; i++) {
@@ -448,6 +470,11 @@ function render() {
 
     prevTime = curTime;
 
+    var activity = 0;
+    var liveusers = 0;
+    var liveconns = 0;
+    var livesites = 0;
+
 
     var bufferctx = doublebuffer.getContext("2d");
     bufferctx.fillStyle = "rgba(0,0,0,0.35)";
@@ -467,6 +494,8 @@ function render() {
         for (var s in users[u].sites) {
             var lnk = users[u].sites[s];
             if (lnk.life > 0) {
+                activity++;
+                liveconns++;
                 if (Math.random() < lnk.life) {
                     var st = sites[s];
                     ctx.globalCompositeOperation = "lighter";
@@ -493,13 +522,14 @@ function render() {
         }
     }
 
-
     ctx.font = "18px ft";
     ctx.textAlign = "center";
     for (var u in users) {
         ctx.fillStyle = "#fff";
         var user = users[u];
         if (user.life <= 0) continue;
+        activity++;
+        liveusers++;
         var upos = worldTo2d(users[u].x, users[u].y);
         if (Math.random() < user.life * 1.5) {
             if (user.life > 0.5 && Math.random() > 0.5) {
@@ -523,29 +553,82 @@ function render() {
 
     ctx.font = "13px ft";
     for (var u in sites) {
+        ctx.lineWidth = 3;
         ctx.fillStyle = "rgba(255,255,255,1)";
         var site = sites[u];
         if (site.life <= 0) continue;
+        activity++;
+        livesites++;
         var upos = worldTo2d(site.x, site.y);
         if (Math.random() < site.life * 1.5) {
             if (site.life > 0.5 && Math.random() > 0.5) {
                 if (Math.random() > 0.9 || !site.decor) {
                     site.decor = textCovers[Math.floor(Math.random() * textCovers.length)];
                 }
-                ctx.fillText(site.decor[0] + " " + u + " " + site.decor[1], upos.x, upos.y + 40);
+                ctx.fillText(site.decor[0] + " " + (site.host ? site.host : u) + " " + site.decor[1], upos.x, upos.y + 40);
+
             } else {
-                ctx.fillText(u, upos.x, upos.y + 40);
+                ctx.fillText((site.host ? site.host : u), upos.x, upos.y + 40);
             }
             ctx.strokeStyle = "rgba(255,255,255,1)";
             //ctx.fillStyle = "rgba(" + Math.floor(sites[s].color.r * 255) + ", " + Math.floor(sites[s].color.g * 255)  + ", " + Math.floor(sites[s].color.b* 255)  +", 1)";
             ctx.beginPath();
-            ctx.fillStyle = "rgba(255,255,255," + ((1 - site.life) / 1.5 + 0.8) + ")";
+            // ctx.fillStyle = "rgba(255,255,255," + ((1 - site.life) / 1.5 + 0.8) + ")";
             ctx.arc(upos.x, upos.y, site.life * site.life * 20, 0, 2 * Math.PI, false);
             ctx.closePath();
             ctx.stroke();
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(255,255,255," + ((1 - site.life) / 2 + 0.5) + ")";
+            ctx.arc(upos.x, upos.y, site.life * site.life * site.life * (Math.random() * 30 + 110), 0, 2 * Math.PI, false);
+            ctx.closePath();
+            ctx.stroke();
+
+
         }
     }
+    if (empty.length !== GPU_Particles) {
+        activity += Math.ceil((GPU_Particles - empty.length) / 10);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(20, 30 + 30 + 5, Math.pow(activity, 0.98), 60);
+    ctx.font = "21px ft";
+    ctx.textAlign = 'left';
+    if (Math.random() < Math.min(Math.pow(activity, 1 / 5), 0.9)) {
+        ctx.globalCompositeOperation = "difference";
+        ctx.fillText("ACTIVITY > " + activity, 25, 53 + 30 + 5);
+        ctx.fillText(Math.ceil(GPU_Particles - empty.length) + ":" + liveusers + ":" + livesites + ":" + liveconns, 25, 53 + 60 + 5);
+    }
+    ctx.font = "26px ft";
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillText("<edge>", 25, 53);
 
+
+    if (curTime - prevBlink > 1000) {
+        blink++;
+        blink %= 8;
+        prevBlink = curTime;
+    }
+
+
+
+    if (activity / 10 <= 1) {
+        if (blink <= 3) {
+            ctx.font = "40px ft";
+            ctx.globalCompositeOperation = "lighter";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(255,255,255," + (blink % 2 + 0.3) + ")"
+            ctx.fillText("Join [ Edge ] Wi-Fi to Start", width * 1.5 / 2, height * 1.5 / 2);
+        }
+        else if (blink <= 7) {
+            ctx.font = "40px ft";
+            ctx.globalCompositeOperation = "lighter";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(255,255,255," + (blink % 2 + 0.3) + ")"
+            ctx.fillText("Go for anything Online", width * 1.5 / 2, height * 1.5 / 2);
+        }
+    }
 }
 
 var projector = new THREE.Projector();
