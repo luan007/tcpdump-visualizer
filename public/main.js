@@ -155,15 +155,22 @@ function triggerLink(u, s) {
 }
 
 
-var width = window.innerWidth;
-var height = window.innerHeight;
-var realw = width * devicePixelRatio;
-var realh = height * devicePixelRatio;
-var wd2 = width / 2;
-var hd2 = height / 2;
-var rwd2 = realw / 2 + 55;
-var rhd2 = realh / 2 + 55;
+var width, height, realw, realh, wd2, hd2, rwd2, rhd2;
 
+function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    realw = width * devicePixelRatio;
+    realh = height * devicePixelRatio;
+    wd2 = width / 2;
+    hd2 = height / 2;
+    rwd2 = realw / 2 + 55;
+    rhd2 = realh / 2 + 55
+}
+
+window.onresize = resize();
+
+//adjust this to kill lag :p
 var GPU_Particles = 50000;
 
 
