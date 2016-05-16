@@ -232,6 +232,8 @@ window.onload = function () {
         packetIn("rbb2", "c2");
     }
 
+    window.onmousedown = window.ontouchend = toggle;
+    
     var MIN = 50;
     var MINSQ = MIN * MIN;
 
